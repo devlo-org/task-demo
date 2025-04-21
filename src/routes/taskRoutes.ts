@@ -120,8 +120,67 @@ router.patch(
       }
 
       const updates = req.body;
-      if (updates.dueDate) {
-        updates.dueDate = new Date(updates.dueDate);
+      
+      // Validate title if provided
+      if (updates.title !== undefined) {
+        if (typeof updates.title !== 'string' || updates.title.trim().length === 0 || updates.title.length > 100) {
+          res.status(400).json({ error: "Title must be between 1 and 100 characters" });
+          return;
+        }
+        updates.title = updates.title.trim();
+      }
+
+      // Validate description if provided
+      if (updates.description !== undefined) {
+        if (typeof updates.description !== 'string' || updates.description.trim().length === 0) {
+          res.status(400).json({ error: "Description is required and must be a non-empty string" });
+          return;
+        }
+        updates.description = updates.description.trim();
+      }
+
+      // Validate status if provided
+      if (updates.status !== undefined) {
+        const validStatuses = ["todo", "in_progress", "completed"];
+        if (!validStatuses.includes(updates.status)) {
+          res.status(400).json({ error: "Invalid status value" });
+          return;
+        }
+      }
+
+      // Validate priority if provided
+      if (updates.priority !== undefined) {
+        if (!Number.isInteger(updates.priority) || updates.priority < 1 || updates.priority > 5) {
+          res.status(400).json({ error: "Priority must be an integer between 1 and 5" });
+          return;
+        }
+      }
+
+      // Validate due date if provided
+      if (updates.dueDate !== undefined) {
+        const dueDate = new Date(updates.dueDate);
+        if (isNaN(dueDate.getTime())) {
+          res.status(400).json({ error: "Invalid due date format" });
+          return;
+        }
+        if (dueDate <= new Date()) {
+          res.status(400).json({ error: "Due date must be in the future" });
+          return;
+        }
+        updates.dueDate = dueDate;
+      }
+
+      // Validate assignedTo if provided
+      if (updates.assignedTo !== undefined) {
+        if (!mongoose.Types.ObjectId.isValid(updates.assignedTo)) {
+          res.status(400).json({ error: "Invalid assignedTo user ID" });
+          return;
+        }
+        const userExists = await mongoose.model('User').exists({ _id: updates.assignedTo });
+        if (!userExists) {
+          res.status(400).json({ error: "Assigned user does not exist" });
+          return;
+        }
       }
 
       Object.assign(task, updates);
@@ -129,7 +188,11 @@ router.patch(
       await task.populate("assignedTo", "name email");
       res.json(task);
     } catch (error) {
-      res.status(400).json({ error: "Failed to update task" });
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: "Failed to update task" });
+      }
     }
   },
 );
