@@ -23,7 +23,9 @@ export const JWT_CONFIG = {
     }
     return process.env.JWT_SECRET as Secret;
   },
-  expiresIn: process.env.JWT_EXPIRES_IN || '24h' as string,
+  get expiresIn() {
+    return process.env.JWT_EXPIRES_IN || '24h';
+  },
 };
 
 // Server configuration

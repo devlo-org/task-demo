@@ -35,7 +35,7 @@ router.post(
       const user = new User({ email, password, name });
       await user.save();
 
-      const options: SignOptions = { expiresIn: JWT_CONFIG.expiresIn };
+      const options: SignOptions = { expiresIn: JWT_CONFIG.expiresIn as any };
       const token = jwt.sign(
         { userId: user._id, role: user.role },
         JWT_CONFIG.secret,
@@ -68,7 +68,7 @@ router.post(
       user.lastLogin = new Date();
       await user.save();
 
-      const options: SignOptions = { expiresIn: JWT_CONFIG.expiresIn };
+      const options: SignOptions = { expiresIn: JWT_CONFIG.expiresIn as any };
       const token = jwt.sign(
         { userId: user._id, role: user.role },
         JWT_CONFIG.secret,
