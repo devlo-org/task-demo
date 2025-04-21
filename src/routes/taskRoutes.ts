@@ -2,6 +2,14 @@ import express, { Request, Response } from "express";
 import { Task } from "../models/Task";
 import { authenticate, authorize } from "../middleware/auth";
 import mongoose from "mongoose";
+import { 
+  validateTitle, 
+  validateDescription, 
+  validateStatus, 
+  validatePriority, 
+  validateDueDate, 
+  validateAssignedTo 
+} from '../utils/taskValidators';
 
 const router = express.Router();
 
@@ -19,7 +27,7 @@ interface UpdateTaskRequest {
   description?: string;
   status?: "todo" | "in_progress" | "completed";
   priority?: number;
-  dueDate?: string;
+  dueDate?: string | Date;
   assignedTo?: string;
 }
 
@@ -120,8 +128,64 @@ router.patch(
       }
 
       const updates = req.body;
-      if (updates.dueDate) {
-        updates.dueDate = new Date(updates.dueDate);
+      
+      // Use imported validators
+      
+      // Validate title if provided
+      if (updates.title !== undefined) {
+        const result = validateTitle(updates.title);
+        if (!result.isValid) {
+          res.status(400).json({ error: result.error });
+          return;
+        }
+        updates.title = updates.title.trim();
+      }
+
+      // Validate description if provided
+      if (updates.description !== undefined) {
+        const result = validateDescription(updates.description);
+        if (!result.isValid) {
+          res.status(400).json({ error: result.error });
+          return;
+        }
+        updates.description = updates.description.trim();
+      }
+
+      // Validate status if provided
+      if (updates.status !== undefined) {
+        const result = validateStatus(updates.status);
+        if (!result.isValid) {
+          res.status(400).json({ error: result.error });
+          return;
+        }
+      }
+
+      // Validate priority if provided
+      if (updates.priority !== undefined) {
+        const result = validatePriority(updates.priority);
+        if (!result.isValid) {
+          res.status(400).json({ error: result.error });
+          return;
+        }
+      }
+
+      // Validate due date if provided
+      if (updates.dueDate !== undefined) {
+        const result = validateDueDate(updates.dueDate);
+        if (!result.isValid) {
+          res.status(400).json({ error: result.error });
+          return;
+        }
+        updates.dueDate = result.parsedDate;
+      }
+
+      // Validate assignedTo if provided
+      if (updates.assignedTo !== undefined) {
+        const result = await validateAssignedTo(updates.assignedTo);
+        if (!result.isValid) {
+          res.status(400).json({ error: result.error });
+          return;
+        }
       }
 
       Object.assign(task, updates);
@@ -129,7 +193,11 @@ router.patch(
       await task.populate("assignedTo", "name email");
       res.json(task);
     } catch (error) {
-      res.status(400).json({ error: "Failed to update task" });
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: "Failed to update task" });
+      }
     }
   },
 );
